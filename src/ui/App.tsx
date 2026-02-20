@@ -55,6 +55,8 @@ const App: React.FC = () => {
         setIsLoading(false);
       } else if (msg.type === 'replaceComplete') {
         setScopeInfo(`Replaced ${msg.count} external tokens with local matches`);
+      } else if (msg.type === 'reattachComplete') {
+        setScopeInfo(`Reattached ${msg.count} styles`);
       }
     };
 
@@ -107,6 +109,23 @@ const App: React.FC = () => {
           localMatch: item.localMatch,
           type: item.type
         }))
+      }
+    }, '*');
+  };
+
+  const handleReattach = () => {
+    // Get unique node IDs from results
+    const uniqueNodeIds = Array.from(new Set(results.map(item => item.nodeId).filter(Boolean)));
+    
+    if (uniqueNodeIds.length === 0) {
+      return;
+    }
+
+    // Send reattach command to plugin
+    parent.postMessage({
+      pluginMessage: {
+        type: 'reattach',
+        nodeIds: uniqueNodeIds
       }
     }, '*');
   };
@@ -348,16 +367,25 @@ const App: React.FC = () => {
       
       {!isLoading && results.length > 0 && (
         <>
-          {hasMatchesToReplace && (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {hasMatchesToReplace && (
+              <Button
+                view="outlined"
+                size="l"
+                onClick={handleReplaceMatches}
+                disabled={replacedItems.size > 0}
+              >
+                Replace matches
+              </Button>
+            )}
             <Button
               view="outlined"
               size="l"
-              onClick={handleReplaceMatches}
-              disabled={replacedItems.size > 0}
+              onClick={handleReattach}
             >
-              Replace matches
+              Reattach
             </Button>
-          )}
+          </div>
           <div style={{ flex: 1, overflow: 'auto' }}>
             <Table
               data={results}
