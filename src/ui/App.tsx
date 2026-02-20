@@ -18,6 +18,8 @@ interface ExternalUsage {
   page: string;
   parents: string[];
   localMatch: string;
+  nodeId?: string;
+  replaced?: boolean;
 }
 
 interface FindResults {
@@ -32,6 +34,7 @@ interface FindResults {
 const App: React.FC = () => {
   const [results, setResults] = useState<ExternalUsage[]>([]);
   const [scopeInfo, setScopeInfo] = useState<string>('');
+  const [replacedItems, setReplacedItems] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -41,9 +44,13 @@ const App: React.FC = () => {
         const data = msg as FindResults;
         setResults(data.results);
         setScopeInfo(`Found ${data.count} external library usages in ${data.scopeName}`);
+        setReplacedItems(new Set());
       } else if (msg.type === 'findError') {
         setScopeInfo(`Error: ${msg.error}`);
         setResults([]);
+        setReplacedItems(new Set());
+      } else if (msg.type === 'replaceComplete') {
+        setScopeInfo(`Replaced ${msg.count} external tokens with local matches`);
       }
     };
 
@@ -62,6 +69,36 @@ const App: React.FC = () => {
   const handleFindFile = () => {
     parent.postMessage({ pluginMessage: { type: 'findFile' } }, '*');
   };
+
+  const handleReplaceMatches = () => {
+    // Find all items with local matches
+    const itemsToReplace = results
+      .map((item, index) => ({ ...item, index }))
+      .filter(item => item.localMatch);
+    
+    if (itemsToReplace.length === 0) {
+      return;
+    }
+
+    // Mark items as replaced in UI
+    const newReplacedItems = new Set(itemsToReplace.map(item => item.index));
+    setReplacedItems(newReplacedItems);
+
+    // Send replace command to plugin
+    parent.postMessage({
+      pluginMessage: {
+        type: 'replaceMatches',
+        items: itemsToReplace.map(item => ({
+          nodeId: item.nodeId,
+          name: item.name,
+          localMatch: item.localMatch,
+          type: item.type
+        }))
+      }
+    }, '*');
+  };
+
+  const hasMatchesToReplace = results.some(item => item.localMatch);
 
   const getIconForType = (type: ExternalUsage['type'], value: string) => {
     const containerStyle = {
@@ -152,42 +189,80 @@ const App: React.FC = () => {
       name: 'Token',
       className: "g-text_variant_body-1",
       width: 300,
-      template: (item: ExternalUsage) => (
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          {getIconForType(item.type, item.value)}
-          <span>{item.name}</span>
-        </div>
-      ),
+      template: (item: ExternalUsage, index: number) => {
+        const isReplaced = replacedItems.has(index);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {getIconForType(item.type, item.value)}
+            <span style={{
+              color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
+              textDecoration: isReplaced ? 'line-through' : undefined
+            }}>
+              {item.name}
+            </span>
+          </div>
+        );
+      },
     },
     {
       id: 'localMatch',
       name: 'Local Match',
       className: "g-text_variant_body-1",
       width: 300,
-      template: (item: ExternalUsage) => (
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          {item.localMatch ? (
-            <>
-              {getIconForType(item.type, item.value)}
-              <span>{item.localMatch}</span>
-            </>
-          ) : (
-            <span style={{ color: 'var(--g-color-text-secondary)', fontStyle: 'italic' }}>—</span>
-          )}
-        </div>
-      ),
+      template: (item: ExternalUsage, index: number) => {
+        const isReplaced = replacedItems.has(index);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {item.localMatch ? (
+              <>
+                {getIconForType(item.type, item.value)}
+                <span style={{
+                  color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
+                  textDecoration: isReplaced ? 'line-through' : undefined
+                }}>
+                  {item.localMatch}
+                </span>
+              </>
+            ) : (
+              <span style={{ color: 'var(--g-color-text-secondary)', fontStyle: 'italic' }}>—</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       id: 'layerName',
       className: "g-text_variant_body-1",
       name: 'Layer',
       width: 200,
+      template: (item: ExternalUsage, index: number) => {
+        const isReplaced = replacedItems.has(index);
+        return (
+          <span style={{
+            color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
+            textDecoration: isReplaced ? 'line-through' : undefined
+          }}>
+            {item.layerName}
+          </span>
+        );
+      },
     },
     {
       id: 'page',
       className: "g-text_variant_body-1",
       name: 'Page',
       width: 150,
+      template: (item: ExternalUsage, index: number) => {
+        const isReplaced = replacedItems.has(index);
+        return (
+          <span style={{
+            color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
+            textDecoration: isReplaced ? 'line-through' : undefined
+          }}>
+            {item.page}
+          </span>
+        );
+      },
     },
   ];
 
@@ -212,13 +287,25 @@ const App: React.FC = () => {
       )}
       
       {results.length > 0 && (
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <Table
-            data={results}
-            columns={columns}
-            verticalAlign="top"
-          />
-        </div>
+        <>
+          {hasMatchesToReplace && (
+            <Button
+              view="outlined"
+              size="l"
+              onClick={handleReplaceMatches}
+              disabled={replacedItems.size > 0}
+            >
+              Replace matches
+            </Button>
+          )}
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <Table
+              data={results}
+              columns={columns}
+              verticalAlign="top"
+            />
+          </div>
+        </>
       )}
     </div>
   );

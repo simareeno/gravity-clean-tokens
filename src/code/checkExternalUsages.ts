@@ -6,6 +6,7 @@ export interface ExternalUsage {
   page: string;
   parents: string[];
   localMatch: string;
+  nodeId: string;
 }
 
 /**
@@ -152,7 +153,8 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
                   type: variableType,
                   page: page,
                   parents: parents,
-                  localMatch: localMatch
+                  localMatch: localMatch,
+                  nodeId: node.id
                 });
               }
             }
@@ -321,7 +323,8 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
           type: specificStyleType,
           page: page,
           parents: parents,
-          localMatch: localMatch
+          localMatch: localMatch,
+          nodeId: node.id
         });
       }
     } catch (error) {
