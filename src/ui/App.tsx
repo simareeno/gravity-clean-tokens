@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Text, Button } from '@gravity-ui/uikit';
 
 const App: React.FC = () => {
-  const handleClick = () => {
-    parent.postMessage({ pluginMessage: { type: 'findAll' } }, '*');
+  const handleFindPage = () => {
+    parent.postMessage({ pluginMessage: { type: 'findPage' } }, '*');
   };
 
   return (
@@ -11,8 +11,8 @@ const App: React.FC = () => {
         <Text variant="header-1">
           Figma Clean Tokens
         </Text>
-        <Button view="action" size="l" onClick={handleClick}>
-          Export
+        <Button view="action" size="l" onClick={handleFindPage}>
+          Find in Page
         </Button>
     </div>
   );
