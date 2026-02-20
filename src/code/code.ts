@@ -3,6 +3,120 @@ import { ExternalUsage, traverseNode } from './checkExternalUsages';
 console.clear();
 figma.showUI(__html__, { width: 700, height: 700 });
 
+// Helper function to reattach styles on a single node
+function reattachStylesOnNode(node: SceneNode): number {
+  let reattachedCount = 0;
+
+  // Process Fill style
+  if ('fillStyleId' in node && node.fillStyleId && typeof node.fillStyleId === 'string') {
+    const fillStyleId = node.fillStyleId;
+    
+    // Detach style
+    (node as any).fillStyleId = '';
+    
+    // Unbind all variables from fills
+    if ('fills' in node && Array.isArray(node.fills)) {
+      const newFills = node.fills.map((fill: any) => {
+        const newFill = { ...fill };
+        delete newFill.boundVariables;
+        return newFill;
+      });
+      (node as any).fills = newFills;
+    }
+    
+    // Reattach style
+    (node as any).fillStyleId = fillStyleId;
+    reattachedCount++;
+  }
+
+  // Process Stroke style
+  if ('strokeStyleId' in node && node.strokeStyleId && typeof node.strokeStyleId === 'string') {
+    const strokeStyleId = node.strokeStyleId;
+    
+    // Detach style
+    (node as any).strokeStyleId = '';
+    
+    // Unbind all variables from strokes
+    if ('strokes' in node && Array.isArray(node.strokes)) {
+      const newStrokes = node.strokes.map((stroke: any) => {
+        const newStroke = { ...stroke };
+        delete newStroke.boundVariables;
+        return newStroke;
+      });
+      (node as any).strokes = newStrokes;
+    }
+    
+    // Reattach style
+    (node as any).strokeStyleId = strokeStyleId;
+    reattachedCount++;
+  }
+
+  // Process Effect style
+  if ('effectStyleId' in node && node.effectStyleId && typeof node.effectStyleId === 'string') {
+    const effectStyleId = node.effectStyleId;
+    
+    // Detach style
+    (node as any).effectStyleId = '';
+    
+    // Unbind all variables from effects
+    if ('effects' in node && Array.isArray(node.effects)) {
+      const newEffects = node.effects.map((effect: any) => {
+        const newEffect = { ...effect };
+        delete newEffect.boundVariables;
+        return newEffect;
+      });
+      (node as any).effects = newEffects;
+    }
+    
+    // Reattach style
+    (node as any).effectStyleId = effectStyleId;
+    reattachedCount++;
+  }
+
+  // Process Grid style
+  if ('gridStyleId' in node && node.gridStyleId && typeof node.gridStyleId === 'string') {
+    const gridStyleId = node.gridStyleId;
+    
+    // Detach style
+    (node as any).gridStyleId = '';
+    
+    // Unbind all variables from grids
+    if ('layoutGrids' in node && Array.isArray(node.layoutGrids)) {
+      const newGrids = node.layoutGrids.map((grid: any) => {
+        const newGrid = { ...grid };
+        delete newGrid.boundVariables;
+        return newGrid;
+      });
+      (node as any).layoutGrids = newGrids;
+    }
+    
+    // Reattach style
+    (node as any).gridStyleId = gridStyleId;
+    reattachedCount++;
+  }
+
+  return reattachedCount;
+}
+
+// Helper function to traverse and reattach styles on all nodes
+function traverseAndReattach(node: BaseNode): number {
+  let count = 0;
+
+  // Process current node if it's a SceneNode
+  if ('type' in node && node.type !== 'PAGE' && node.type !== 'DOCUMENT') {
+    count += reattachStylesOnNode(node as SceneNode);
+  }
+
+  // Recursively process children
+  if ('children' in node) {
+    for (const child of (node as any).children) {
+      count += traverseAndReattach(child);
+    }
+  }
+
+  return count;
+}
+
 figma.ui.onmessage = async (msg) => {
   if (msg.type === 'findPage') {
     try {
@@ -357,6 +471,39 @@ figma.ui.onmessage = async (msg) => {
       
     } catch (error) {
       console.error('Error replacing matches:', error);
+      figma.ui.postMessage({
+        type: 'findError',
+        error: String(error)
+      });
+    }
+  } else if (msg.type === 'reattachSelection') {
+    try {
+      const selection = figma.currentPage.selection;
+      
+      if (selection.length === 0) {
+        figma.ui.postMessage({
+          type: 'findError',
+          error: 'No elements selected. Please select at least one element.'
+        });
+        return;
+      }
+
+      let reattachedCount = 0;
+
+      // Traverse all selected nodes and their children
+      for (const node of selection) {
+        reattachedCount += traverseAndReattach(node);
+      }
+
+      figma.ui.postMessage({
+        type: 'reattachComplete',
+        count: reattachedCount
+      });
+
+      console.log(`Reattached ${reattachedCount} styles in selection`);
+      
+    } catch (error) {
+      console.error('Error reattaching styles in selection:', error);
       figma.ui.postMessage({
         type: 'findError',
         error: String(error)

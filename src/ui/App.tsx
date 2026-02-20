@@ -130,6 +130,15 @@ const App: React.FC = () => {
     }, '*');
   };
 
+  const handleReattachSelection = () => {
+    // Send reattach selection command to plugin
+    parent.postMessage({
+      pluginMessage: {
+        type: 'reattachSelection'
+      }
+    }, '*');
+  };
+
   const handleScrollToNode = (nodeId: string | undefined) => {
     if (!nodeId) return;
     
@@ -326,7 +335,7 @@ const App: React.FC = () => {
 
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <Button view="normal" size="l" onClick={handleFindSelection}>
           Find in Selection
         </Button>
@@ -335,6 +344,9 @@ const App: React.FC = () => {
         </Button>
         <Button view="normal" size="l" onClick={handleFindFile}>
           Find in Entire File
+        </Button>
+        <Button view="normal" size="l" onClick={handleReattachSelection}>
+          Reattach Selection
         </Button>
       </div>
       
