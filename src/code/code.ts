@@ -509,6 +509,33 @@ figma.ui.onmessage = async (msg) => {
         error: String(error)
       });
     }
+  } else if (msg.type === 'reattach') {
+    try {
+      const nodeIds = msg.nodeIds;
+      let reattachedCount = 0;
+
+      // Traverse all matched nodes and their children (unified logic)
+      for (const nodeId of nodeIds) {
+        const node = figma.getNodeById(nodeId);
+        if (!node) continue;
+
+        reattachedCount += traverseAndReattach(node);
+      }
+
+      figma.ui.postMessage({
+        type: 'reattachComplete',
+        count: reattachedCount
+      });
+
+      console.log(`Reattached ${reattachedCount} styles`);
+      
+    } catch (error) {
+      console.error('Error reattaching styles:', error);
+      figma.ui.postMessage({
+        type: 'findError',
+        error: String(error)
+      });
+    }
   } else if (msg.type === 'scrollToNode') {
     try {
       const node = figma.getNodeById(msg.nodeId);
@@ -536,118 +563,6 @@ figma.ui.onmessage = async (msg) => {
       }
     } catch (error) {
       console.error('Error scrolling to node:', error);
-    }
-  } else if (msg.type === 'reattach') {
-    try {
-      const nodeIds = msg.nodeIds;
-      let reattachedCount = 0;
-
-      for (const nodeId of nodeIds) {
-        const node = figma.getNodeById(nodeId);
-        if (!node) continue;
-
-        // Process Fill style
-        if ('fillStyleId' in node && node.fillStyleId && typeof node.fillStyleId === 'string') {
-          const fillStyleId = node.fillStyleId;
-          
-          // Detach style
-          (node as any).fillStyleId = '';
-          
-          // Unbind all variables from fills
-          if ('fills' in node && Array.isArray(node.fills)) {
-            const newFills = node.fills.map((fill: any) => {
-              const newFill = { ...fill };
-              delete newFill.boundVariables;
-              return newFill;
-            });
-            (node as any).fills = newFills;
-          }
-          
-          // Reattach style
-          (node as any).fillStyleId = fillStyleId;
-          reattachedCount++;
-        }
-
-        // Process Stroke style
-        if ('strokeStyleId' in node && node.strokeStyleId && typeof node.strokeStyleId === 'string') {
-          const strokeStyleId = node.strokeStyleId;
-          
-          // Detach style
-          (node as any).strokeStyleId = '';
-          
-          // Unbind all variables from strokes
-          if ('strokes' in node && Array.isArray(node.strokes)) {
-            const newStrokes = node.strokes.map((stroke: any) => {
-              const newStroke = { ...stroke };
-              delete newStroke.boundVariables;
-              return newStroke;
-            });
-            (node as any).strokes = newStrokes;
-          }
-          
-          // Reattach style
-          (node as any).strokeStyleId = strokeStyleId;
-          reattachedCount++;
-        }
-
-        // Process Effect style
-        if ('effectStyleId' in node && node.effectStyleId && typeof node.effectStyleId === 'string') {
-          const effectStyleId = node.effectStyleId;
-          
-          // Detach style
-          (node as any).effectStyleId = '';
-          
-          // Unbind all variables from effects
-          if ('effects' in node && Array.isArray(node.effects)) {
-            const newEffects = node.effects.map((effect: any) => {
-              const newEffect = { ...effect };
-              delete newEffect.boundVariables;
-              return newEffect;
-            });
-            (node as any).effects = newEffects;
-          }
-          
-          // Reattach style
-          (node as any).effectStyleId = effectStyleId;
-          reattachedCount++;
-        }
-
-        // Process Grid style
-        if ('gridStyleId' in node && node.gridStyleId && typeof node.gridStyleId === 'string') {
-          const gridStyleId = node.gridStyleId;
-          
-          // Detach style
-          (node as any).gridStyleId = '';
-          
-          // Unbind all variables from grids
-          if ('layoutGrids' in node && Array.isArray(node.layoutGrids)) {
-            const newGrids = node.layoutGrids.map((grid: any) => {
-              const newGrid = { ...grid };
-              delete newGrid.boundVariables;
-              return newGrid;
-            });
-            (node as any).layoutGrids = newGrids;
-          }
-          
-          // Reattach style
-          (node as any).gridStyleId = gridStyleId;
-          reattachedCount++;
-        }
-      }
-
-      figma.ui.postMessage({
-        type: 'reattachComplete',
-        count: reattachedCount
-      });
-
-      console.log(`Reattached ${reattachedCount} styles`);
-      
-    } catch (error) {
-      console.error('Error reattaching styles:', error);
-      figma.ui.postMessage({
-        type: 'findError',
-        error: String(error)
-      });
     }
   }
 };

@@ -339,6 +339,7 @@ const App: React.FC = () => {
 
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+      
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <Button view="normal" size="l" onClick={handleFindSelection}>
           Find in Selection
@@ -353,9 +354,22 @@ const App: React.FC = () => {
           Reattach Selection
         </Button>
       </div>
+
+      {!isLoading && !results.length && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '220px 0',
+        }}>
+          <img src='../icons/arcady-glhf'/>
+          <Text color="secondary">Удачи</Text>
+        </div>
+      )}
       
       {scopeInfo && (
-        <Text variant="body-2" color="secondary">
+        <Text variant="body-2">
           {scopeInfo}
         </Text>
       )}
@@ -381,17 +395,10 @@ const App: React.FC = () => {
       
       {!isLoading && results.length > 0 && (
         <>
-        <div style={{ flex: 1, overflow: 'auto' }}>
-            <Table
-              data={results}
-              columns={columns}
-              verticalAlign="top"
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
             {hasMatchesToReplace && (
               <Button
-                view="action"
+                view="normal"
                 size="l"
                 onClick={handleReplaceMatches}
                 disabled={replacedItems.size > 0}
@@ -406,6 +413,13 @@ const App: React.FC = () => {
             >
               Reattach matches
             </Button>
+          </div>
+        <div style={{ flex: 1, overflow: 'auto' }}>
+            <Table
+              data={results}
+              columns={columns}
+              verticalAlign="top"
+            />
           </div>
         </>
       )}
