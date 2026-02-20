@@ -174,9 +174,6 @@ const App: React.FC = () => {
 
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
-      <Text variant="header-1">
-        Figma Clean Tokens
-      </Text>
       <div style={{ display: 'flex', gap: '8px' }}>
         <Button view="action" size="l" onClick={handleFindPage}>
           Find in Current Page
