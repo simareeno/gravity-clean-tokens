@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, Button, Table, Tooltip, Icon } from '@gravity-ui/uikit';
+import { Text, Button, Table, Tooltip, Icon, Loader } from '@gravity-ui/uikit';
 import type { TableColumnConfig } from '@gravity-ui/uikit';
 import { Ellipsis, ArrowRight } from '@gravity-ui/icons';
 
@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [results, setResults] = useState<ExternalUsage[]>([]);
   const [scopeInfo, setScopeInfo] = useState<string>('');
   const [replacedItems, setReplacedItems] = useState<Set<number>>(new Set());
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -46,10 +47,12 @@ const App: React.FC = () => {
         setResults(data.results);
         setScopeInfo(`Found ${data.count} external library usages in ${data.scopeName}`);
         setReplacedItems(new Set());
+        setIsLoading(false);
       } else if (msg.type === 'findError') {
         setScopeInfo(`Error: ${msg.error}`);
         setResults([]);
         setReplacedItems(new Set());
+        setIsLoading(false);
       } else if (msg.type === 'replaceComplete') {
         setScopeInfo(`Replaced ${msg.count} external tokens with local matches`);
       }
@@ -60,14 +63,23 @@ const App: React.FC = () => {
   }, []);
 
   const handleFindPage = () => {
+    setIsLoading(true);
+    setResults([]);
+    setScopeInfo('');
     parent.postMessage({ pluginMessage: { type: 'findPage' } }, '*');
   };
 
   const handleFindSelection = () => {
+    setIsLoading(true);
+    setResults([]);
+    setScopeInfo('');
     parent.postMessage({ pluginMessage: { type: 'findSelection' } }, '*');
   };
 
   const handleFindFile = () => {
+    setIsLoading(true);
+    setResults([]);
+    setScopeInfo('');
     parent.postMessage({ pluginMessage: { type: 'findFile' } }, '*');
   };
 
@@ -315,7 +327,26 @@ const App: React.FC = () => {
         </Text>
       )}
       
-      {results.length > 0 && (
+      {isLoading && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '24px',
+          padding: '48px 16px',
+          flex: 1
+        }}>
+          <Loader size="l" />
+          <div style={{ textAlign: 'center' }}>
+            <Text variant="body-2" color="secondary">
+              Search in large files may take several minutes...
+            </Text>
+          </div>
+        </div>
+      )}
+      
+      {!isLoading && results.length > 0 && (
         <>
           {hasMatchesToReplace && (
             <Button
