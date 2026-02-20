@@ -363,6 +363,23 @@ figma.ui.onmessage = async (msg) => {
     try {
       const node = figma.getNodeById(msg.nodeId);
       if (node) {
+        // Find the page that contains this node
+        let nodePage: PageNode | null = null;
+        let currentNode: BaseNode | null = node;
+        
+        while (currentNode) {
+          if (currentNode.type === 'PAGE') {
+            nodePage = currentNode as PageNode;
+            break;
+          }
+          currentNode = currentNode.parent;
+        }
+        
+        // Switch to the node's page if it's different from current page
+        if (nodePage && nodePage.id !== figma.currentPage.id) {
+          figma.currentPage = nodePage;
+        }
+        
         // Scroll to the node and select it
         figma.currentPage.selection = [node as SceneNode];
         figma.viewport.scrollAndZoomIntoView([node as SceneNode]);
