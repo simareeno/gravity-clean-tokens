@@ -329,11 +329,11 @@ const App: React.FC = () => {
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <Button view="action" size="l" onClick={handleFindPage}>
-          Find in Current Page
-        </Button>
         <Button view="action" size="l" onClick={handleFindSelection}>
           Find in Selection
+        </Button>
+        <Button view="action" size="l" onClick={handleFindPage}>
+          Find in Current Page
         </Button>
         <Button view="action" size="l" onClick={handleFindFile}>
           Find in Entire File
