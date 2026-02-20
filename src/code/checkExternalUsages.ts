@@ -2,7 +2,7 @@ export interface ExternalUsage {
   layerName: string;
   name: string;
   value: string;
-  type: 'variable' | 'style';
+  type: 'text style' | 'paint style' | 'grid style' | 'effect style' | 'color variable' | 'number variable' | 'string variable' | 'boolean variable';
   page: string;
   parents: string[];
 }
@@ -54,11 +54,31 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
               // Check if variable is from external library
               if (collection && collection.remote) {
                 const value = getVariableValue(variable);
+                
+                // Determine specific variable type
+                let variableType: 'color variable' | 'number variable' | 'string variable' | 'boolean variable';
+                switch (variable.resolvedType) {
+                  case 'COLOR':
+                    variableType = 'color variable';
+                    break;
+                  case 'FLOAT':
+                    variableType = 'number variable';
+                    break;
+                  case 'STRING':
+                    variableType = 'string variable';
+                    break;
+                  case 'BOOLEAN':
+                    variableType = 'boolean variable';
+                    break;
+                  default:
+                    variableType = 'string variable'; // fallback
+                }
+                
                 results.push({
                   layerName: node.name,
                   name: variable.name,
                   value: value,
-                  type: 'variable',
+                  type: variableType,
                   page: page,
                   parents: parents
                 });
@@ -137,11 +157,30 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
         }
         
         const value = getStyleValue(style, styleType);
+        
+        // Determine specific style type
+        let specificStyleType: 'text style' | 'paint style' | 'grid style' | 'effect style';
+        switch (styleType) {
+          case 'text':
+            specificStyleType = 'text style';
+            break;
+          case 'fill':
+          case 'stroke':
+            specificStyleType = 'paint style';
+            break;
+          case 'grid':
+            specificStyleType = 'grid style';
+            break;
+          case 'effect':
+            specificStyleType = 'effect style';
+            break;
+        }
+        
         results.push({
           layerName: node.name,
           name: style.name,
           value: value,
-          type: 'style',
+          type: specificStyleType,
           page: page,
           parents: parents
         });
