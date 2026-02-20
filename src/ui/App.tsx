@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Text, Button, Table, Tooltip, Icon } from '@gravity-ui/uikit';
 import type { TableColumnConfig } from '@gravity-ui/uikit';
-import { Ellipsis } from '@gravity-ui/icons';
+import { Ellipsis, ArrowRight } from '@gravity-ui/icons';
 
 // Import SVG icons
 import StyleTextIcon from '../icons/StyleText.svg';
@@ -95,6 +95,17 @@ const App: React.FC = () => {
           localMatch: item.localMatch,
           type: item.type
         }))
+      }
+    }, '*');
+  };
+
+  const handleScrollToNode = (nodeId: string | undefined) => {
+    if (!nodeId) return;
+    
+    parent.postMessage({
+      pluginMessage: {
+        type: 'scrollToNode',
+        nodeId: nodeId
       }
     }, '*');
   };
@@ -241,13 +252,15 @@ const App: React.FC = () => {
         const hasParents = item.parents && item.parents.length > 0;
         
         return (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
-            textDecoration: isReplaced ? 'line-through' : undefined
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
+              textDecoration: isReplaced ? 'line-through' : undefined
+            }}
+          >
             <span>{item.page} / </span>
             {hasParents && (
               <Tooltip
@@ -264,6 +277,18 @@ const App: React.FC = () => {
             )}
             {hasParents && <span> / </span>}
             <span>{item.layerName}</span>
+            {item.nodeId && (
+              <Tooltip content="Scroll to node in Figma" placement="top">
+                <Button
+                  view="flat-secondary"
+                  size="xs"
+                  onClick={() => handleScrollToNode(item.nodeId)}
+                  style={{ marginLeft: '4px' }}
+                >
+                  <Icon data={ArrowRight} size={16} />
+                </Button>
+              </Tooltip>
+            )}
           </div>
         );
       },

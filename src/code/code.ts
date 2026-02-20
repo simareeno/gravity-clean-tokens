@@ -359,5 +359,16 @@ figma.ui.onmessage = async (msg) => {
         error: String(error)
       });
     }
+  } else if (msg.type === 'scrollToNode') {
+    try {
+      const node = figma.getNodeById(msg.nodeId);
+      if (node) {
+        // Scroll to the node and select it
+        figma.currentPage.selection = [node as SceneNode];
+        figma.viewport.scrollAndZoomIntoView([node as SceneNode]);
+      }
+    } catch (error) {
+      console.error('Error scrolling to node:', error);
+    }
   }
 };
