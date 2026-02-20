@@ -11,45 +11,56 @@ export interface ExternalUsage {
  * @returns Array of external usages found in this node
  */
 export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
-  if (node.name === 'IM HERE') {
-    console.log('check node', node);
-  }
-  
   const results: ExternalUsage[] = [];
   
   // Track which properties have styles to avoid duplicate variable entries
   const propertiesWithStyles = new Set<string>();
+  
+  // Track if node has a text style (to skip typography variables)
+  let hasTextStyle = false;
 
   // Helper function to check variable bindings
   const checkVariableBindings = (bindings: { [field: string]: VariableAlias } | undefined, propertyType?: string) => {
     if (!bindings) return;
 
     for (const field in bindings) {
+      // Skip typography variables if text style exists
+      const typographyFields = ['fontFamily', 'fontSize', 'fontWeight', 'letterSpacing', 'lineHeight', 'paragraphIndent', 'paragraphSpacing'];
+      if (hasTextStyle && typographyFields.includes(field)) {
+        continue;
+      }
+      
       // Skip if this property already has a style
       if (propertyType && propertiesWithStyles.has(propertyType)) {
         continue;
       }
       
       const variableAlias = bindings[field];
-      if (variableAlias && variableAlias.id) {
-        try {
-          const variable = figma.variables.getVariableById(variableAlias.id);
-          if (variable) {
-            const collection = figma.variables.getVariableCollectionById(variable.variableCollectionId);
-            
-            // Check if variable is from external library
-            if (collection && collection.remote) {
-              const value = getVariableValue(variable);
-              results.push({
-                layerName: node.name,
-                name: variable.name,
-                value: value,
-                type: 'variable'
-              });
+      
+      // Handle both single variable alias and array of variable aliases
+      const aliases = Array.isArray(variableAlias) ? variableAlias : [variableAlias];
+      
+      for (const alias of aliases) {
+        if (alias && alias.id) {
+          try {
+            const variable = figma.variables.getVariableById(alias.id);
+            if (variable) {
+              const collection = figma.variables.getVariableCollectionById(variable.variableCollectionId);
+              
+              // Check if variable is from external library
+              if (collection && collection.remote) {
+                const value = getVariableValue(variable);
+                results.push({
+                  layerName: node.name,
+                  name: variable.name,
+                  value: value,
+                  type: 'variable'
+                });
+              }
             }
+          } catch (error) {
+            console.error(`Error checking variable for field ${field}:`, error);
           }
-        } catch (error) {
-          console.error(`Error checking variable for field ${field}:`, error);
         }
       }
     }
@@ -101,6 +112,11 @@ export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
       if (style && style.remote) {
         // Mark this property as having a style
         propertiesWithStyles.add(styleType);
+        
+        // Mark if this is a text style
+        if (styleType === 'text') {
+          hasTextStyle = true;
+        }
         
         const value = getStyleValue(style, styleType);
         results.push({
@@ -173,9 +189,11 @@ export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
     }
   }
 
-  // Check text styles
+  // Check text styles and mark if any text style exists (not just remote)
   if ('textStyleId' in node && node.textStyleId) {
     if (typeof node.textStyleId === 'string') {
+      // Mark that text style exists regardless of whether it's remote
+      hasTextStyle = true;
       checkStyle(node.textStyleId, 'text');
     }
   }
