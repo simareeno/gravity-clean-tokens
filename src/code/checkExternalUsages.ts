@@ -82,6 +82,9 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
   
   // Track if node has a text style (to skip typography variables)
   let hasTextStyle = false;
+  
+  // Track variable IDs that are used within external styles (should be skipped)
+  const variablesInExternalStyles = new Set<string>();
 
   // Helper function to check variable bindings
   const checkVariableBindings = (bindings: { [field: string]: VariableAlias } | undefined, propertyType?: string) => {
@@ -109,6 +112,11 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
           try {
             const variable = figma.variables.getVariableById(alias.id);
             if (variable) {
+              // Skip if this variable is used within an external style
+              if (variablesInExternalStyles.has(alias.id)) {
+                continue;
+              }
+              
               const collection = figma.variables.getVariableCollectionById(variable.variableCollectionId);
               
               // Check if variable is from external library
@@ -218,6 +226,69 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
         // Mark if this is a text style
         if (styleType === 'text') {
           hasTextStyle = true;
+        }
+        
+        // Collect all variable IDs used in this external style
+        if (style.type === 'PAINT') {
+          const paintStyle = style as PaintStyle;
+          if (paintStyle.paints) {
+            paintStyle.paints.forEach((paint) => {
+              if ('boundVariables' in paint && paint.boundVariables) {
+                Object.values(paint.boundVariables).forEach((varAlias) => {
+                  const aliases = Array.isArray(varAlias) ? varAlias : [varAlias];
+                  aliases.forEach((alias) => {
+                    if (alias && alias.id) {
+                      variablesInExternalStyles.add(alias.id);
+                    }
+                  });
+                });
+              }
+            });
+          }
+        } else if (style.type === 'EFFECT') {
+          const effectStyle = style as EffectStyle;
+          if (effectStyle.effects) {
+            effectStyle.effects.forEach((effect) => {
+              if ('boundVariables' in effect && effect.boundVariables) {
+                Object.values(effect.boundVariables).forEach((varAlias) => {
+                  const aliases = Array.isArray(varAlias) ? varAlias : [varAlias];
+                  aliases.forEach((alias) => {
+                    if (alias && alias.id) {
+                      variablesInExternalStyles.add(alias.id);
+                    }
+                  });
+                });
+              }
+            });
+          }
+        } else if (style.type === 'GRID') {
+          const gridStyle = style as GridStyle;
+          if (gridStyle.layoutGrids) {
+            gridStyle.layoutGrids.forEach((grid) => {
+              if ('boundVariables' in grid && grid.boundVariables) {
+                Object.values(grid.boundVariables).forEach((varAlias) => {
+                  const aliases = Array.isArray(varAlias) ? varAlias : [varAlias];
+                  aliases.forEach((alias) => {
+                    if (alias && alias.id) {
+                      variablesInExternalStyles.add(alias.id);
+                    }
+                  });
+                });
+              }
+            });
+          }
+        } else if (style.type === 'TEXT') {
+          const textStyle = style as TextStyle;
+          if ('boundVariables' in textStyle && textStyle.boundVariables) {
+            Object.values(textStyle.boundVariables).forEach((varAlias) => {
+              const aliases = Array.isArray(varAlias) ? varAlias : [varAlias];
+              aliases.forEach((alias) => {
+                if (alias && alias.id) {
+                  variablesInExternalStyles.add(alias.id);
+                }
+              });
+            });
+          }
         }
         
         const value = getStyleValue(style, styleType);
