@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Text, Button, Table, Tooltip, Icon, Loader } from '@gravity-ui/uikit';
 import type { TableColumnConfig } from '@gravity-ui/uikit';
-import { Ellipsis, ArrowRight } from '@gravity-ui/icons';
+import { Target } from '@gravity-ui/icons';
 
 // Import SVG icons
 import StyleTextIcon from '../icons/StyleText.svg';
@@ -229,17 +229,20 @@ const App: React.FC = () => {
   const columns: TableColumnConfig<ExternalUsage>[] = [
     {
       id: 'name',
-      name: 'Token',
+      name: 'External match',
       className: "g-text_variant_body-1",
-      width: 300,
+      width: '33.33%',
       template: (item: ExternalUsage, index: number) => {
         const isReplaced = replacedItems.has(index);
         return (
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
             {getIconForType(item.type, item.value)}
             <span style={{
               color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
-              textDecoration: isReplaced ? 'line-through' : undefined
+              textDecoration: isReplaced ? 'line-through' : undefined,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
             }}>
               {item.name}
             </span>
@@ -251,17 +254,21 @@ const App: React.FC = () => {
       id: 'localMatch',
       name: 'Local Match',
       className: "g-text_variant_body-1",
-      width: 300,
+      width: '33.33%',
       template: (item: ExternalUsage, index: number) => {
         const isReplaced = replacedItems.has(index);
         return (
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
             {item.localMatch ? (
               <>
                 {getIconForType(item.type, item.value)}
-                <span style={{
+                <span
+                 style={{
                   color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
-                  textDecoration: isReplaced ? 'line-through' : undefined
+                  textDecoration: isReplaced ? 'line-through' : undefined,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
                 }}>
                   {item.localMatch}
                 </span>
@@ -277,7 +284,7 @@ const App: React.FC = () => {
       id: 'pageLayer',
       className: "g-text_variant_body-1",
       name: 'Page / Layer',
-      width: 350,
+      width: '33.33%',
       template: (item: ExternalUsage, index: number) => {
         const isReplaced = replacedItems.has(index);
         const hasParents = item.parents && item.parents.length > 0;
@@ -289,37 +296,28 @@ const App: React.FC = () => {
               alignItems: 'center',
               gap: '4px',
               color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
-              textDecoration: isReplaced ? 'line-through' : undefined
+              textDecoration: isReplaced ? 'line-through' : undefined,
+              overflow: 'hidden'
             }}
           >
-            <span>{item.page} / </span>
-            {hasParents && (
-              <Tooltip
-                content={item.parents.join(' / ')}
-                placement="top"
-              >
-                <Button
-                  view="flat"
-                  size="xs"
-                >
-                  <Icon data={Ellipsis} size={16} />
-                </Button>
-              </Tooltip>
-            )}
-            {hasParents && <span> / </span>}
-            <span>{item.layerName}</span>
             {item.nodeId && (
               <Tooltip content="Scroll to node in Figma" placement="top">
                 <Button
                   view="flat-secondary"
                   size="xs"
                   onClick={() => handleScrollToNode(item.nodeId)}
-                  style={{ marginLeft: '4px' }}
                 >
-                  <Icon data={ArrowRight} size={16} />
+                  <Icon data={Target} size={16} />
                 </Button>
               </Tooltip>
             )}
+            <span style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {item.page} / {hasParents && '... / '}{item.layerName}
+            </span>
           </div>
         );
       },
@@ -329,13 +327,13 @@ const App: React.FC = () => {
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <Button view="action" size="l" onClick={handleFindSelection}>
+        <Button view="normal" size="l" onClick={handleFindSelection}>
           Find in Selection
         </Button>
-        <Button view="action" size="l" onClick={handleFindPage}>
+        <Button view="normal" size="l" onClick={handleFindPage}>
           Find in Current Page
         </Button>
-        <Button view="action" size="l" onClick={handleFindFile}>
+        <Button view="normal" size="l" onClick={handleFindFile}>
           Find in Entire File
         </Button>
       </div>
@@ -359,7 +357,7 @@ const App: React.FC = () => {
           <Loader size="l" />
           <div style={{ textAlign: 'center' }}>
             <Text variant="body-2" color="secondary">
-              Search in large files may take several minutes...
+              Search in large files will take several minutes...
             </Text>
           </div>
         </div>
@@ -367,10 +365,17 @@ const App: React.FC = () => {
       
       {!isLoading && results.length > 0 && (
         <>
+        <div style={{ flex: 1, overflow: 'auto' }}>
+            <Table
+              data={results}
+              columns={columns}
+              verticalAlign="top"
+            />
+          </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             {hasMatchesToReplace && (
               <Button
-                view="outlined"
+                view="action"
                 size="l"
                 onClick={handleReplaceMatches}
                 disabled={replacedItems.size > 0}
@@ -379,19 +384,12 @@ const App: React.FC = () => {
               </Button>
             )}
             <Button
-              view="outlined"
+              view="normal"
               size="l"
               onClick={handleReattach}
             >
-              Reattach
+              Reattach matches
             </Button>
-          </div>
-          <div style={{ flex: 1, overflow: 'auto' }}>
-            <Table
-              data={results}
-              columns={columns}
-              verticalAlign="top"
-            />
           </div>
         </>
       )}
