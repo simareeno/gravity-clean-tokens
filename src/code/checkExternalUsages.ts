@@ -11,13 +11,25 @@ export interface ExternalUsage {
  * @returns Array of external usages found in this node
  */
 export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
+  if (node.name === 'IM HERE') {
+    console.log('check node', node);
+  }
+  
   const results: ExternalUsage[] = [];
+  
+  // Track which properties have styles to avoid duplicate variable entries
+  const propertiesWithStyles = new Set<string>();
 
   // Helper function to check variable bindings
-  const checkVariableBindings = (bindings: { [field: string]: VariableAlias } | undefined) => {
+  const checkVariableBindings = (bindings: { [field: string]: VariableAlias } | undefined, propertyType?: string) => {
     if (!bindings) return;
 
     for (const field in bindings) {
+      // Skip if this property already has a style
+      if (propertyType && propertiesWithStyles.has(propertyType)) {
+        continue;
+      }
+      
       const variableAlias = bindings[field];
       if (variableAlias && variableAlias.id) {
         try {
@@ -87,6 +99,9 @@ export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
       }
 
       if (style && style.remote) {
+        // Mark this property as having a style
+        propertiesWithStyles.add(styleType);
+        
         const value = getStyleValue(style, styleType);
         results.push({
           layerName: node.name,
@@ -129,16 +144,7 @@ export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
     }
   };
 
-  // Check variable bindings if node supports them
-  if ('boundVariables' in node && node.boundVariables) {
-    checkVariableBindings(node.boundVariables as { [field: string]: VariableAlias });
-  }
-
-  // Check explicit variable bindings for different node types
-  if ('explicitVariableModes' in node && node.explicitVariableModes) {
-    // Component sets can have explicit variable modes
-  }
-
+  // FIRST: Check all styles to mark which properties have styles
   // Check fill styles
   if ('fillStyleId' in node && node.fillStyleId) {
     if (typeof node.fillStyleId === 'string') {
@@ -174,38 +180,49 @@ export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
     }
   }
 
-  // Check fills for variable bindings
+  // SECOND: Check variables only for properties that don't have styles
+  // Check variable bindings if node supports them
+  if ('boundVariables' in node && node.boundVariables) {
+    checkVariableBindings(node.boundVariables as { [field: string]: VariableAlias });
+  }
+
+  // Check explicit variable bindings for different node types
+  if ('explicitVariableModes' in node && node.explicitVariableModes) {
+    // Component sets can have explicit variable modes
+  }
+
+  // Check fills for variable bindings (only if no fill style)
   if ('fills' in node && Array.isArray(node.fills)) {
     node.fills.forEach((fill) => {
       if ('boundVariables' in fill && fill.boundVariables) {
-        checkVariableBindings(fill.boundVariables as { [field: string]: VariableAlias });
+        checkVariableBindings(fill.boundVariables as { [field: string]: VariableAlias }, 'fill');
       }
     });
   }
 
-  // Check strokes for variable bindings
+  // Check strokes for variable bindings (only if no stroke style)
   if ('strokes' in node && Array.isArray(node.strokes)) {
     node.strokes.forEach((stroke) => {
       if ('boundVariables' in stroke && stroke.boundVariables) {
-        checkVariableBindings(stroke.boundVariables as { [field: string]: VariableAlias });
+        checkVariableBindings(stroke.boundVariables as { [field: string]: VariableAlias }, 'stroke');
       }
     });
   }
 
-  // Check effects for variable bindings
+  // Check effects for variable bindings (only if no effect style)
   if ('effects' in node && Array.isArray(node.effects)) {
     node.effects.forEach((effect) => {
       if ('boundVariables' in effect && effect.boundVariables) {
-        checkVariableBindings(effect.boundVariables as { [field: string]: VariableAlias });
+        checkVariableBindings(effect.boundVariables as { [field: string]: VariableAlias }, 'effect');
       }
     });
   }
 
-  // Check layout grids for variable bindings
+  // Check layout grids for variable bindings (only if no grid style)
   if ('layoutGrids' in node && Array.isArray(node.layoutGrids)) {
     node.layoutGrids.forEach((grid) => {
       if ('boundVariables' in grid && grid.boundVariables) {
-        checkVariableBindings(grid.boundVariables as { [field: string]: VariableAlias });
+        checkVariableBindings(grid.boundVariables as { [field: string]: VariableAlias }, 'grid');
       }
     });
   }
