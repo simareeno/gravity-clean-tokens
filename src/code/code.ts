@@ -324,10 +324,13 @@ figma.ui.onmessage = async (msg) => {
                 (node as any).textStyleId = localToken.id;
                 replacedCount++;
               } else if (item.type === 'paint style') {
+                // Check and replace fillStyleId
                 if ('fillStyleId' in node && node.fillStyleId) {
                   (node as any).fillStyleId = localToken.id;
                   replacedCount++;
-                } else if ('strokeStyleId' in node && node.strokeStyleId) {
+                }
+                // Check and replace strokeStyleId (independent of fillStyleId)
+                if ('strokeStyleId' in node && node.strokeStyleId) {
                   (node as any).strokeStyleId = localToken.id;
                   replacedCount++;
                 }
