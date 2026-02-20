@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Text, Button, Table } from '@gravity-ui/uikit';
+import { Text, Button, Table, Tooltip, Icon } from '@gravity-ui/uikit';
 import type { TableColumnConfig } from '@gravity-ui/uikit';
+import { Ellipsis } from '@gravity-ui/icons';
 
 // Import SVG icons
 import StyleTextIcon from '../icons/StyleText.svg';
@@ -231,36 +232,39 @@ const App: React.FC = () => {
       },
     },
     {
-      id: 'layerName',
+      id: 'pageLayer',
       className: "g-text_variant_body-1",
-      name: 'Layer',
-      width: 200,
+      name: 'Page / Layer',
+      width: 350,
       template: (item: ExternalUsage, index: number) => {
         const isReplaced = replacedItems.has(index);
+        const hasParents = item.parents && item.parents.length > 0;
+        
         return (
-          <span style={{
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
             color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
             textDecoration: isReplaced ? 'line-through' : undefined
           }}>
-            {item.layerName}
-          </span>
-        );
-      },
-    },
-    {
-      id: 'page',
-      className: "g-text_variant_body-1",
-      name: 'Page',
-      width: 150,
-      template: (item: ExternalUsage, index: number) => {
-        const isReplaced = replacedItems.has(index);
-        return (
-          <span style={{
-            color: isReplaced ? 'var(--g-color-text-secondary)' : undefined,
-            textDecoration: isReplaced ? 'line-through' : undefined
-          }}>
-            {item.page}
-          </span>
+            <span>{item.page} / </span>
+            {hasParents && (
+              <Tooltip
+                content={item.parents.join(' / ')}
+                placement="top"
+              >
+                <Button
+                  view="flat"
+                  size="xs"
+                >
+                  <Icon data={Ellipsis} size={16} />
+                </Button>
+              </Tooltip>
+            )}
+            {hasParents && <span> / </span>}
+            <span>{item.layerName}</span>
+          </div>
         );
       },
     },
