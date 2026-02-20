@@ -461,6 +461,16 @@ export function traverseNode(node: BaseNode, results: ExternalUsage[], page?: st
   let currentPage = page;
   if (node.type === 'PAGE') {
     currentPage = node.name;
+  } else if (!currentPage) {
+    // If page is not set, try to find it from the node's parent hierarchy
+    let parentNode = node.parent;
+    while (parentNode) {
+      if (parentNode.type === 'PAGE') {
+        currentPage = parentNode.name;
+        break;
+      }
+      parentNode = parentNode.parent;
+    }
   }
   
   // Check if node is a SceneNode (has visual properties)
