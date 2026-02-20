@@ -1,0 +1,234 @@
+export interface ExternalUsage {
+  layerName: string;
+  name: string;
+  value: string;
+  type: 'variable' | 'style';
+}
+
+/**
+ * Checks a single node for external library variables and styles
+ * @param node - The node to check
+ * @returns Array of external usages found in this node
+ */
+export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
+  const results: ExternalUsage[] = [];
+
+  // Helper function to check variable bindings
+  const checkVariableBindings = (bindings: { [field: string]: VariableAlias } | undefined) => {
+    if (!bindings) return;
+
+    for (const field in bindings) {
+      const variableAlias = bindings[field];
+      if (variableAlias && variableAlias.id) {
+        try {
+          const variable = figma.variables.getVariableById(variableAlias.id);
+          if (variable) {
+            const collection = figma.variables.getVariableCollectionById(variable.variableCollectionId);
+            
+            // Check if variable is from external library
+            if (collection && collection.remote) {
+              const value = getVariableValue(variable);
+              results.push({
+                layerName: node.name,
+                name: variable.name,
+                value: value,
+                type: 'variable'
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Error checking variable for field ${field}:`, error);
+        }
+      }
+    }
+  };
+
+  // Helper function to get variable value as string
+  const getVariableValue = (variable: Variable): string => {
+    try {
+      const modeId = Object.keys(variable.valuesByMode)[0];
+      const value = variable.valuesByMode[modeId];
+      
+      if (typeof value === 'object' && value !== null) {
+        if ('r' in value && 'g' in value && 'b' in value) {
+          // RGB/RGBA color
+          const alpha = 'a' in value ? value.a : 1;
+          return `rgba(${Math.round(value.r * 255)}, ${Math.round(value.g * 255)}, ${Math.round(value.b * 255)}, ${alpha})`;
+        }
+        return JSON.stringify(value);
+      }
+      return String(value);
+    } catch (error) {
+      return 'unknown';
+    }
+  };
+
+  // Helper function to check style
+  const checkStyle = (styleId: string, styleType: 'fill' | 'stroke' | 'effect' | 'grid' | 'text') => {
+    if (!styleId) return;
+
+    try {
+      let style: BaseStyle | null = null;
+      
+      switch (styleType) {
+        case 'fill':
+        case 'stroke':
+          style = figma.getStyleById(styleId) as PaintStyle | null;
+          break;
+        case 'effect':
+          style = figma.getStyleById(styleId) as EffectStyle | null;
+          break;
+        case 'grid':
+          style = figma.getStyleById(styleId) as GridStyle | null;
+          break;
+        case 'text':
+          style = figma.getStyleById(styleId) as TextStyle | null;
+          break;
+      }
+
+      if (style && style.remote) {
+        const value = getStyleValue(style, styleType);
+        results.push({
+          layerName: node.name,
+          name: style.name,
+          value: value,
+          type: 'style'
+        });
+      }
+    } catch (error) {
+      console.error(`Error checking style ${styleId}:`, error);
+    }
+  };
+
+  // Helper function to get style value as string
+  const getStyleValue = (style: BaseStyle, styleType: string): string => {
+    try {
+      if (style.type === 'PAINT') {
+        const paintStyle = style as PaintStyle;
+        if (paintStyle.paints && paintStyle.paints.length > 0) {
+          const paint = paintStyle.paints[0];
+          if (paint.type === 'SOLID' && 'color' in paint) {
+            const c = paint.color;
+            return `rgba(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)}, ${paint.opacity || 1})`;
+          }
+          return paint.type;
+        }
+      } else if (style.type === 'TEXT') {
+        const textStyle = style as TextStyle;
+        return `${textStyle.fontName.family} ${textStyle.fontSize}px`;
+      } else if (style.type === 'EFFECT') {
+        const effectStyle = style as EffectStyle;
+        return effectStyle.effects.map(e => e.type).join(', ');
+      } else if (style.type === 'GRID') {
+        const gridStyle = style as GridStyle;
+        return gridStyle.layoutGrids.map(g => g.pattern).join(', ');
+      }
+      return style.type;
+    } catch (error) {
+      return 'unknown';
+    }
+  };
+
+  // Check variable bindings if node supports them
+  if ('boundVariables' in node && node.boundVariables) {
+    checkVariableBindings(node.boundVariables as { [field: string]: VariableAlias });
+  }
+
+  // Check explicit variable bindings for different node types
+  if ('explicitVariableModes' in node && node.explicitVariableModes) {
+    // Component sets can have explicit variable modes
+  }
+
+  // Check fill styles
+  if ('fillStyleId' in node && node.fillStyleId) {
+    if (typeof node.fillStyleId === 'string') {
+      checkStyle(node.fillStyleId, 'fill');
+    }
+  }
+
+  // Check stroke styles
+  if ('strokeStyleId' in node && node.strokeStyleId) {
+    if (typeof node.strokeStyleId === 'string') {
+      checkStyle(node.strokeStyleId, 'stroke');
+    }
+  }
+
+  // Check effect styles
+  if ('effectStyleId' in node && node.effectStyleId) {
+    if (typeof node.effectStyleId === 'string') {
+      checkStyle(node.effectStyleId, 'effect');
+    }
+  }
+
+  // Check grid styles
+  if ('gridStyleId' in node && node.gridStyleId) {
+    if (typeof node.gridStyleId === 'string') {
+      checkStyle(node.gridStyleId, 'grid');
+    }
+  }
+
+  // Check text styles
+  if ('textStyleId' in node && node.textStyleId) {
+    if (typeof node.textStyleId === 'string') {
+      checkStyle(node.textStyleId, 'text');
+    }
+  }
+
+  // Check fills for variable bindings
+  if ('fills' in node && Array.isArray(node.fills)) {
+    node.fills.forEach((fill) => {
+      if ('boundVariables' in fill && fill.boundVariables) {
+        checkVariableBindings(fill.boundVariables as { [field: string]: VariableAlias });
+      }
+    });
+  }
+
+  // Check strokes for variable bindings
+  if ('strokes' in node && Array.isArray(node.strokes)) {
+    node.strokes.forEach((stroke) => {
+      if ('boundVariables' in stroke && stroke.boundVariables) {
+        checkVariableBindings(stroke.boundVariables as { [field: string]: VariableAlias });
+      }
+    });
+  }
+
+  // Check effects for variable bindings
+  if ('effects' in node && Array.isArray(node.effects)) {
+    node.effects.forEach((effect) => {
+      if ('boundVariables' in effect && effect.boundVariables) {
+        checkVariableBindings(effect.boundVariables as { [field: string]: VariableAlias });
+      }
+    });
+  }
+
+  // Check layout grids for variable bindings
+  if ('layoutGrids' in node && Array.isArray(node.layoutGrids)) {
+    node.layoutGrids.forEach((grid) => {
+      if ('boundVariables' in grid && grid.boundVariables) {
+        checkVariableBindings(grid.boundVariables as { [field: string]: VariableAlias });
+      }
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Recursively traverses all nodes on a page
+ * @param node - The node to start traversal from
+ * @param results - Array to accumulate results
+ */
+export function traverseNode(node: BaseNode, results: ExternalUsage[]) {
+  // Check if node is a SceneNode (has visual properties)
+  if ('type' in node && node.type !== 'DOCUMENT' && node.type !== 'PAGE') {
+    const nodeResults = checkNodeForExternalUsages(node as SceneNode);
+    results.push(...nodeResults);
+  }
+
+  // Recursively check children
+  if ('children' in node) {
+    for (const child of node.children) {
+      traverseNode(child, results);
+    }
+  }
+}
