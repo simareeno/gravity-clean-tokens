@@ -84,6 +84,18 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
           const alpha = 'a' in value ? value.a : 1;
           return `rgba(${Math.round(value.r * 255)}, ${Math.round(value.g * 255)}, ${Math.round(value.b * 255)}, ${alpha})`;
         }
+        // Check if this is a VARIABLE_ALIAS
+        if ('type' in value && value.type === 'VARIABLE_ALIAS' && 'id' in value) {
+          // Recursively resolve the aliased variable
+          try {
+            const aliasedVariable = figma.variables.getVariableById(value.id as string);
+            if (aliasedVariable) {
+              return getVariableValue(aliasedVariable);
+            }
+          } catch (error) {
+            console.error('Error resolving variable alias:', error);
+          }
+        }
         return JSON.stringify(value);
       }
       return String(value);
