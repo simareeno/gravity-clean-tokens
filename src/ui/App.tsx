@@ -10,6 +10,7 @@ import StyleEffectIcon from '../icons/StyleEffect.svg';
 import VariableBooleanIcon from '../icons/VariableBoolean.svg';
 import VariableNumberIcon from '../icons/VariableNumber.svg';
 import VariableStringIcon from '../icons/VariableString.svg';
+import Placeholder from '../icons/Placeholder.png';
 
 interface ExternalUsage {
   layerName: string;
@@ -358,13 +359,21 @@ const App: React.FC = () => {
       {!isLoading && !results.length && (
         <div style={{
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '220px 0',
+          padding: '180px 100px 0',
+          gap: '32px'
         }}>
-          <img src='../icons/arcady-glhf'/>
-          <Text color="secondary">Удачи</Text>
+          <img width="140" src={Placeholder} />
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            <Text variant="header-1" color="complementary">Clean up your file</Text>
+            <Text variant="body-3" color="complementary">Find and replace external styles and variables. Use&nbsp;reattach for stubborn variables</Text>
+          </div>
         </div>
       )}
       
