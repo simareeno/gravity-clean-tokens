@@ -57,6 +57,7 @@ const App: React.FC = () => {
         setScopeInfo(`Replaced ${msg.count} external tokens with local matches`);
       } else if (msg.type === 'reattachComplete') {
         setScopeInfo(`Reattached ${msg.count} styles`);
+        setIsLoading(false);
       }
     };
 
@@ -131,6 +132,9 @@ const App: React.FC = () => {
   };
 
   const handleReattachSelection = () => {
+    setIsLoading(true);
+    setResults([]);
+    setScopeInfo('');
     // Send reattach selection command to plugin
     parent.postMessage({
       pluginMessage: {
