@@ -3,14 +3,18 @@ export interface ExternalUsage {
   name: string;
   value: string;
   type: 'variable' | 'style';
+  page: string;
+  parents: string[];
 }
 
 /**
  * Checks a single node for external library variables and styles
  * @param node - The node to check
+ * @param page - The page name where the node is located
+ * @param parents - Array of parent node names
  * @returns Array of external usages found in this node
  */
-export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
+export function checkNodeForExternalUsages(node: SceneNode, page: string, parents: string[]): ExternalUsage[] {
   const results: ExternalUsage[] = [];
   
   // Track which properties have styles to avoid duplicate variable entries
@@ -54,7 +58,9 @@ export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
                   layerName: node.name,
                   name: variable.name,
                   value: value,
-                  type: 'variable'
+                  type: 'variable',
+                  page: page,
+                  parents: parents
                 });
               }
             }
@@ -123,7 +129,9 @@ export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
           layerName: node.name,
           name: style.name,
           value: value,
-          type: 'style'
+          type: 'style',
+          page: page,
+          parents: parents
         });
       }
     } catch (error) {
@@ -252,18 +260,31 @@ export function checkNodeForExternalUsages(node: SceneNode): ExternalUsage[] {
  * Recursively traverses all nodes on a page
  * @param node - The node to start traversal from
  * @param results - Array to accumulate results
+ * @param page - The page name (optional, will be determined from node hierarchy)
+ * @param parents - Array of parent node names (optional, will be built during traversal)
  */
-export function traverseNode(node: BaseNode, results: ExternalUsage[]) {
+export function traverseNode(node: BaseNode, results: ExternalUsage[], page?: string, parents: string[] = []) {
+  // Determine page name
+  let currentPage = page;
+  if (node.type === 'PAGE') {
+    currentPage = node.name;
+  }
+  
   // Check if node is a SceneNode (has visual properties)
   if ('type' in node && node.type !== 'DOCUMENT' && node.type !== 'PAGE') {
-    const nodeResults = checkNodeForExternalUsages(node as SceneNode);
+    const nodeResults = checkNodeForExternalUsages(node as SceneNode, currentPage || 'Unknown', parents);
     results.push(...nodeResults);
   }
 
   // Recursively check children
   if ('children' in node) {
+    // Build new parents array for children
+    const newParents = node.type !== 'DOCUMENT' && node.type !== 'PAGE'
+      ? [...parents, node.name]
+      : parents;
+    
     for (const child of node.children) {
-      traverseNode(child, results);
+      traverseNode(child, results, currentPage, newParents);
     }
   }
 }
