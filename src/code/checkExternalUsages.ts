@@ -5,6 +5,66 @@ export interface ExternalUsage {
   type: 'text style' | 'paint style' | 'grid style' | 'effect style' | 'color variable' | 'number variable' | 'string variable' | 'boolean variable';
   page: string;
   parents: string[];
+  localMatch: string;
+}
+
+/**
+ * Finds a matching local variable or style by name
+ * @param name - The name to search for
+ * @param type - The type of token (variable or style)
+ * @returns The name of the matching local token, or empty string if not found
+ */
+function findLocalMatch(name: string, type: ExternalUsage['type']): string {
+  try {
+    // Check if it's a variable type
+    if (type.includes('variable')) {
+      // Get all local variable collections (non-remote)
+      const collections = figma.variables.getLocalVariableCollections();
+      
+      for (const collection of collections) {
+        // Get all variables in this collection
+        for (const variableId of collection.variableIds) {
+          const variable = figma.variables.getVariableById(variableId);
+          if (variable && variable.name === name) {
+            // Check if variable type matches
+            const isColorVariable = type === 'color variable' && variable.resolvedType === 'COLOR';
+            const isNumberVariable = type === 'number variable' && variable.resolvedType === 'FLOAT';
+            const isStringVariable = type === 'string variable' && variable.resolvedType === 'STRING';
+            const isBooleanVariable = type === 'boolean variable' && variable.resolvedType === 'BOOLEAN';
+            
+            if (isColorVariable || isNumberVariable || isStringVariable || isBooleanVariable) {
+              return variable.name;
+            }
+          }
+        }
+      }
+    }
+    // Check if it's a style type
+    else if (type.includes('style')) {
+      // Get all local styles based on type
+      let localStyles: BaseStyle[] = [];
+      
+      if (type === 'text style') {
+        localStyles = figma.getLocalTextStyles();
+      } else if (type === 'paint style') {
+        localStyles = figma.getLocalPaintStyles();
+      } else if (type === 'effect style') {
+        localStyles = figma.getLocalEffectStyles();
+      } else if (type === 'grid style') {
+        localStyles = figma.getLocalGridStyles();
+      }
+      
+      for (const style of localStyles) {
+        if (style.name === name) {
+          return style.name;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error finding local match:', error);
+  }
+  
+  return '';
 }
 
 /**
@@ -74,13 +134,17 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
                     variableType = 'string variable'; // fallback
                 }
                 
+                // Find matching local variable
+                const localMatch = findLocalMatch(variable.name, variableType);
+                
                 results.push({
                   layerName: node.name,
                   name: variable.name,
                   value: value,
                   type: variableType,
                   page: page,
-                  parents: parents
+                  parents: parents,
+                  localMatch: localMatch
                 });
               }
             }
@@ -176,13 +240,17 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
             break;
         }
         
+        // Find matching local style
+        const localMatch = findLocalMatch(style.name, specificStyleType);
+        
         results.push({
           layerName: node.name,
           name: style.name,
           value: value,
           type: specificStyleType,
           page: page,
-          parents: parents
+          parents: parents,
+          localMatch: localMatch
         });
       }
     } catch (error) {

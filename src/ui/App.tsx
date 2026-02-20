@@ -17,6 +17,7 @@ interface ExternalUsage {
   type: 'text style' | 'paint style' | 'grid style' | 'effect style' | 'color variable' | 'number variable' | 'string variable' | 'boolean variable';
   page: string;
   parents: string[];
+  localMatch: string;
 }
 
 interface FindResults {
@@ -150,11 +151,29 @@ const App: React.FC = () => {
       id: 'name',
       name: 'Token',
       className: "g-text_variant_body-1",
-      width: 350,
+      width: 300,
       template: (item: ExternalUsage) => (
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {getIconForType(item.type, item.value)}
           <span>{item.name}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'localMatch',
+      name: 'Local Match',
+      className: "g-text_variant_body-1",
+      width: 300,
+      template: (item: ExternalUsage) => (
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {item.localMatch ? (
+            <>
+              {getIconForType(item.type, item.value)}
+              <span>{item.localMatch}</span>
+            </>
+          ) : (
+            <span style={{ color: 'var(--g-color-text-secondary)', fontStyle: 'italic' }}>—</span>
+          )}
         </div>
       ),
     },
