@@ -144,6 +144,18 @@ const App: React.FC = () => {
     }, '*');
   };
 
+  const handleReattachLayer = () => {
+    setIsLoading(true);
+    setResults([]);
+    setScopeInfo('');
+    // Send reattach layer command to plugin
+    parent.postMessage({
+      pluginMessage: {
+        type: 'reattachLayer'
+      }
+    }, '*');
+  };
+
   const handleScrollToNode = (nodeId: string | undefined) => {
     if (!nodeId) return;
     
@@ -342,21 +354,29 @@ const App: React.FC = () => {
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
       
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        <Button view="normal" size="l" onClick={handleFindSelection}>
-          Find in Selection
-        </Button>
-        <Button view="normal" size="l" onClick={handleFindPage}>
-          Find in Current Page
-        </Button>
-        <Button view="normal" size="l" onClick={handleFindFile}>
-          Find in Entire File
-        </Button>
-        <Button view="normal" size="l" onClick={handleReattachSelection}>
-          Reattach Selection
-        </Button>
+        <div style={{ display: 'flex', gap: '1px', flexWrap: 'wrap' }}>
+          <Button view="normal" size="l" onClick={handleFindSelection} pin="round-brick">
+            Find in Selection
+          </Button>
+          <Button view="normal" size="l" onClick={handleFindPage} pin="brick-brick">
+            Current Page
+          </Button>
+          <Button view="normal" size="l" onClick={handleFindFile} pin="brick-round">
+            Entire File
+          </Button>
+        </div>
+        <div style={{ display: 'flex', gap: '1px', flexWrap: 'wrap' }}>
+          <Button view="normal" size="l" onClick={handleReattachSelection} pin="round-brick">
+            Reattach Selection
+          </Button>
+          <Button view="normal" size="l" onClick={handleReattachLayer} pin="brick-round">
+            Layer
+          </Button>
+        </div>
       </div>
+      
 
-      {!isLoading && !results.length && (
+      {!isLoading && !scopeInfo && results.length === 0 && (
         <div style={{
           display: 'flex',
           flexDirection: 'row',
@@ -369,9 +389,9 @@ const App: React.FC = () => {
           <div style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px'
+            gap: '8px'
           }}>
-            <Text variant="header-1" color="complementary">Clean up your file</Text>
+            <Text variant="subheader-3" color="complementary">Clean up your file</Text>
             <Text variant="body-3" color="complementary">Find and replace external styles and variables. Use&nbsp;reattach for stubborn variables</Text>
           </div>
         </div>

@@ -509,6 +509,39 @@ figma.ui.onmessage = async (msg) => {
         error: String(error)
       });
     }
+  } else if (msg.type === 'reattachLayer') {
+    try {
+      const selection = figma.currentPage.selection;
+      
+      if (selection.length === 0) {
+        figma.ui.postMessage({
+          type: 'findError',
+          error: 'No elements selected. Please select at least one element.'
+        });
+        return;
+      }
+
+      let reattachedCount = 0;
+
+      // Reattach styles only on selected layers (without traversing children)
+      for (const node of selection) {
+        reattachedCount += reattachStylesOnNode(node);
+      }
+
+      figma.ui.postMessage({
+        type: 'reattachComplete',
+        count: reattachedCount
+      });
+
+      console.log(`Reattached ${reattachedCount} styles on selected layers`);
+      
+    } catch (error) {
+      console.error('Error reattaching styles on layers:', error);
+      figma.ui.postMessage({
+        type: 'findError',
+        error: String(error)
+      });
+    }
   } else if (msg.type === 'reattach') {
     try {
       const nodeIds = msg.nodeIds;
