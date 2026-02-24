@@ -1,7 +1,12 @@
 import { ExternalUsage, traverseNode } from './checkExternalUsages';
 
 console.clear();
-figma.showUI(__html__, { width: 700, height: 700 });
+figma.showUI(__html__, { width: 800, height: 700 });
+
+// Restore previous size
+figma.clientStorage.getAsync('size').then(size => {
+  if (size) figma.ui.resize(size.w, size.h);
+}).catch(err => {});
 
 // Helper function to reattach styles on a single node
 function reattachStylesOnNode(node: SceneNode): number {
@@ -118,7 +123,10 @@ function traverseAndReattach(node: BaseNode): number {
 }
 
 figma.ui.onmessage = async (msg) => {
-  if (msg.type === 'findPage') {
+  if (msg.type === 'resize') {
+    figma.ui.resize(msg.size.w, msg.size.h);
+    figma.clientStorage.setAsync('size', msg.size).catch(err => {});
+  } else if (msg.type === 'findPage') {
     try {
       const currentPage = figma.currentPage;
       const results: ExternalUsage[] = [];

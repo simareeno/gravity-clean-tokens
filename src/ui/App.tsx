@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Text, Button, Table, Tooltip, Icon, Loader } from '@gravity-ui/uikit';
 import type { TableColumnConfig } from '@gravity-ui/uikit';
 import { Target } from '@gravity-ui/icons';
@@ -11,6 +11,7 @@ import VariableBooleanIcon from '../icons/VariableBoolean.svg';
 import VariableNumberIcon from '../icons/VariableNumber.svg';
 import VariableStringIcon from '../icons/VariableString.svg';
 import Placeholder from '../icons/Placeholder.png';
+import ResizeIcon from '../icons/Resize.svg';
 
 interface ExternalUsage {
   layerName: string;
@@ -38,6 +39,38 @@ const App: React.FC = () => {
   const [scopeInfo, setScopeInfo] = useState<string>('');
   const [replacedItems, setReplacedItems] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const resizeCornerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const corner = resizeCornerRef.current;
+    if (!corner) return;
+
+    function resizeWindow(e: PointerEvent) {
+      const size = {
+        w: Math.max(50, Math.floor(e.clientX + 5)),
+        h: Math.max(50, Math.floor(e.clientY + 5))
+      };
+      parent.postMessage({ pluginMessage: { type: 'resize', size: size } }, '*');
+    }
+
+    const handlePointerDown = (e: PointerEvent) => {
+      corner.onpointermove = resizeWindow;
+      corner.setPointerCapture(e.pointerId);
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      corner.onpointermove = null;
+      corner.releasePointerCapture(e.pointerId);
+    };
+
+    corner.addEventListener('pointerdown', handlePointerDown);
+    corner.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      corner.removeEventListener('pointerdown', handlePointerDown);
+      corner.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, []);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -351,8 +384,26 @@ const App: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%', position: 'relative' }}>
       
+      <div
+        ref={resizeCornerRef}
+        style={{
+          position: 'absolute',
+          bottom: 4,
+          right: 4,
+          width: '16px',
+          height: '16px',
+          cursor: 'nwse-resize',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <img src={ResizeIcon} style={{ width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
+      </div>
+
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: '1px', flexWrap: 'wrap' }}>
           <Button view="normal" size="l" onClick={handleFindSelection} pin="round-brick">
@@ -382,8 +433,9 @@ const App: React.FC = () => {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '180px 100px 0',
-          gap: '32px'
+          padding: '0',
+          gap: '32px',
+          flex: '1'
         }}>
           <img width="140" src={Placeholder} />
           <div style={{
