@@ -1,7 +1,7 @@
 import { ExternalUsage, traverseNode } from './checkExternalUsages';
 
 console.clear();
-figma.showUI(__html__, { width: 800, height: 700 });
+figma.showUI(__html__, { width: 880, height: 700 });
 
 // Restore previous size
 figma.clientStorage.getAsync('size').then(size => {

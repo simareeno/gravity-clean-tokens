@@ -7,6 +7,7 @@ export interface ExternalUsage {
   parents: string[];
   localMatch: string;
   nodeId: string;
+  attribute?: string;
 }
 
 /**
@@ -154,7 +155,8 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
                   page: page,
                   parents: parents,
                   localMatch: localMatch,
-                  nodeId: node.id
+                  nodeId: node.id,
+                  attribute: field
                 });
               }
             }
@@ -297,19 +299,27 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
         
         // Determine specific style type
         let specificStyleType: 'text style' | 'paint style' | 'grid style' | 'effect style';
+        let attributeName: string;
         switch (styleType) {
           case 'text':
             specificStyleType = 'text style';
+            attributeName = 'textStyleId';
             break;
           case 'fill':
+            specificStyleType = 'paint style';
+            attributeName = 'fillStyleId';
+            break;
           case 'stroke':
             specificStyleType = 'paint style';
+            attributeName = 'strokeStyleId';
             break;
           case 'grid':
             specificStyleType = 'grid style';
+            attributeName = 'gridStyleId';
             break;
           case 'effect':
             specificStyleType = 'effect style';
+            attributeName = 'effectStyleId';
             break;
         }
         
@@ -324,7 +334,8 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
           page: page,
           parents: parents,
           localMatch: localMatch,
-          nodeId: node.id
+          nodeId: node.id,
+          attribute: attributeName
         });
       }
     } catch (error) {

@@ -23,6 +23,7 @@ interface ExternalUsage {
   localMatch: string;
   nodeId?: string;
   replaced?: boolean;
+  attribute?: string;
 }
 
 interface FindResults {
@@ -290,7 +291,7 @@ const App: React.FC = () => {
       id: 'name',
       name: 'External match',
       className: "g-text_variant_body-1",
-      width: '33.33%',
+      width: '28%',
       template: (item: ExternalUsage, index: number) => {
         const isReplaced = replacedItems.has(index);
         return (
@@ -313,7 +314,7 @@ const App: React.FC = () => {
       id: 'localMatch',
       name: 'Local Match',
       className: "g-text_variant_body-1",
-      width: '33.33%',
+      width: '28%',
       template: (item: ExternalUsage, index: number) => {
         const isReplaced = replacedItems.has(index);
         return (
@@ -343,7 +344,7 @@ const App: React.FC = () => {
       id: 'pageLayer',
       className: "g-text_variant_body-1",
       name: 'Page / Layer',
-      width: '33.33%',
+      width: '29%',
       template: (item: ExternalUsage, index: number) => {
         const isReplaced = replacedItems.has(index);
         const hasParents = item.parents && item.parents.length > 0;
@@ -376,6 +377,30 @@ const App: React.FC = () => {
               whiteSpace: 'nowrap'
             }}>
               {item.page} / {hasParents && '... / '}{item.layerName}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'attribute',
+      name: 'Attribute',
+      className: "g-text_variant_body-1",
+      width: '15%',
+      template: (item: ExternalUsage, index: number) => {
+        const isReplaced = replacedItems.has(index);
+        return (
+          <div style={{ overflow: 'hidden' }}>
+            <span style={{
+              color: isReplaced ? 'var(--g-color-text-secondary)' : 'var(--g-color-text-secondary)',
+              textDecoration: isReplaced ? 'line-through' : undefined,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontFamily: 'monospace',
+              fontSize: '12px'
+            }}>
+              {item.attribute || '—'}
             </span>
           </div>
         );
@@ -433,7 +458,7 @@ const App: React.FC = () => {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '0',
+          padding: '0 10%',
           gap: '32px',
           flex: '1'
         }}>
