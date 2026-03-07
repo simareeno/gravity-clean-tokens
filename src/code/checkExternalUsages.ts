@@ -16,17 +16,17 @@ export interface ExternalUsage {
  * @param type - The type of token (variable or style)
  * @returns The name of the matching local token, or empty string if not found
  */
-function findLocalMatch(name: string, type: ExternalUsage['type']): string {
+async function findLocalMatch(name: string, type: ExternalUsage['type']): Promise<string> {
   try {
     // Check if it's a variable type
     if (type.includes('variable')) {
       // Get all local variable collections (non-remote)
-      const collections = figma.variables.getLocalVariableCollections();
+      const collections = await figma.variables.getLocalVariableCollectionsAsync();
       
       for (const collection of collections) {
         // Get all variables in this collection
         for (const variableId of collection.variableIds) {
-          const variable = figma.variables.getVariableById(variableId);
+          const variable = await figma.variables.getVariableByIdAsync(variableId);
           if (variable && variable.name === name) {
             // Check if variable type matches
             const isColorVariable = type === 'color variable' && variable.resolvedType === 'COLOR';
@@ -47,13 +47,13 @@ function findLocalMatch(name: string, type: ExternalUsage['type']): string {
       let localStyles: BaseStyle[] = [];
       
       if (type === 'text style') {
-        localStyles = figma.getLocalTextStyles();
+        localStyles = await figma.getLocalTextStylesAsync();
       } else if (type === 'paint style') {
-        localStyles = figma.getLocalPaintStyles();
+        localStyles = await figma.getLocalPaintStylesAsync();
       } else if (type === 'effect style') {
-        localStyles = figma.getLocalEffectStyles();
+        localStyles = await figma.getLocalEffectStylesAsync();
       } else if (type === 'grid style') {
-        localStyles = figma.getLocalGridStyles();
+        localStyles = await figma.getLocalGridStylesAsync();
       }
       
       for (const style of localStyles) {
@@ -76,7 +76,7 @@ function findLocalMatch(name: string, type: ExternalUsage['type']): string {
  * @param parents - Array of parent node names
  * @returns Array of external usages found in this node
  */
-export function checkNodeForExternalUsages(node: SceneNode, page: string, parents: string[]): ExternalUsage[] {
+export async function checkNodeForExternalUsages(node: SceneNode, page: string, parents: string[]): Promise<ExternalUsage[]> {
   const results: ExternalUsage[] = [];
   
   // Track which properties have styles to avoid duplicate variable entries
@@ -89,7 +89,7 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
   const variablesInExternalStyles = new Set<string>();
 
   // Helper function to check variable bindings
-  const checkVariableBindings = (bindings: { [field: string]: VariableAlias } | undefined, propertyType?: string) => {
+  const checkVariableBindings = async (bindings: { [field: string]: VariableAlias } | undefined, propertyType?: string) => {
     if (!bindings) return;
 
     for (const field in bindings) {
@@ -112,18 +112,18 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
       for (const alias of aliases) {
         if (alias && alias.id) {
           try {
-            const variable = figma.variables.getVariableById(alias.id);
+            const variable = await figma.variables.getVariableByIdAsync(alias.id);
             if (variable) {
               // Skip if this variable is used within an external style
               if (variablesInExternalStyles.has(alias.id)) {
                 continue;
               }
               
-              const collection = figma.variables.getVariableCollectionById(variable.variableCollectionId);
+              const collection = await figma.variables.getVariableCollectionByIdAsync(variable.variableCollectionId);
               
               // Check if variable is from external library
               if (collection && collection.remote) {
-                const value = getVariableValue(variable);
+                const value = await getVariableValue(variable);
                 
                 // Determine specific variable type
                 let variableType: 'color variable' | 'number variable' | 'string variable' | 'boolean variable';
@@ -145,7 +145,7 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
                 }
                 
                 // Find matching local variable
-                const localMatch = findLocalMatch(variable.name, variableType);
+                const localMatch = await findLocalMatch(variable.name, variableType);
                 
                 results.push({
                   layerName: node.name,
@@ -169,7 +169,7 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
   };
 
   // Helper function to get variable value as string
-  const getVariableValue = (variable: Variable): string => {
+  const getVariableValue = async (variable: Variable): Promise<string> => {
     try {
       const modeId = Object.keys(variable.valuesByMode)[0];
       const value = variable.valuesByMode[modeId];
@@ -184,7 +184,7 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
         if ('type' in value && value.type === 'VARIABLE_ALIAS' && 'id' in value) {
           // Recursively resolve the aliased variable
           try {
-            const aliasedVariable = figma.variables.getVariableById(value.id as string);
+            const aliasedVariable = await figma.variables.getVariableByIdAsync(value.id as string);
             if (aliasedVariable) {
               return getVariableValue(aliasedVariable);
             }
@@ -201,7 +201,7 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
   };
 
   // Helper function to check style
-  const checkStyle = (styleId: string, styleType: 'fill' | 'stroke' | 'effect' | 'grid' | 'text') => {
+  const checkStyle = async (styleId: string, styleType: 'fill' | 'stroke' | 'effect' | 'grid' | 'text') => {
     if (!styleId) return;
 
     try {
@@ -210,16 +210,16 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
       switch (styleType) {
         case 'fill':
         case 'stroke':
-          style = figma.getStyleById(styleId) as PaintStyle | null;
+          style = await figma.getStyleByIdAsync(styleId) as PaintStyle | null;
           break;
         case 'effect':
-          style = figma.getStyleById(styleId) as EffectStyle | null;
+          style = await figma.getStyleByIdAsync(styleId) as EffectStyle | null;
           break;
         case 'grid':
-          style = figma.getStyleById(styleId) as GridStyle | null;
+          style = await figma.getStyleByIdAsync(styleId) as GridStyle | null;
           break;
         case 'text':
-          style = figma.getStyleById(styleId) as TextStyle | null;
+          style = await figma.getStyleByIdAsync(styleId) as TextStyle | null;
           break;
       }
 
@@ -324,7 +324,7 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
         }
         
         // Find matching local style
-        const localMatch = findLocalMatch(style.name, specificStyleType);
+        const localMatch = await findLocalMatch(style.name, specificStyleType);
         
         results.push({
           layerName: node.name,
@@ -376,28 +376,28 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
   // Check fill styles
   if ('fillStyleId' in node && node.fillStyleId) {
     if (typeof node.fillStyleId === 'string') {
-      checkStyle(node.fillStyleId, 'fill');
+      await checkStyle(node.fillStyleId, 'fill');
     }
   }
 
   // Check stroke styles
   if ('strokeStyleId' in node && node.strokeStyleId) {
     if (typeof node.strokeStyleId === 'string') {
-      checkStyle(node.strokeStyleId, 'stroke');
+      await checkStyle(node.strokeStyleId, 'stroke');
     }
   }
 
   // Check effect styles
   if ('effectStyleId' in node && node.effectStyleId) {
     if (typeof node.effectStyleId === 'string') {
-      checkStyle(node.effectStyleId, 'effect');
+      await checkStyle(node.effectStyleId, 'effect');
     }
   }
 
   // Check grid styles
   if ('gridStyleId' in node && node.gridStyleId) {
     if (typeof node.gridStyleId === 'string') {
-      checkStyle(node.gridStyleId, 'grid');
+      await checkStyle(node.gridStyleId, 'grid');
     }
   }
 
@@ -406,14 +406,14 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
     if (typeof node.textStyleId === 'string') {
       // Mark that text style exists regardless of whether it's remote
       hasTextStyle = true;
-      checkStyle(node.textStyleId, 'text');
+      await checkStyle(node.textStyleId, 'text');
     }
   }
 
   // SECOND: Check variables only for properties that don't have styles
   // Check variable bindings if node supports them
   if ('boundVariables' in node && node.boundVariables) {
-    checkVariableBindings(node.boundVariables as { [field: string]: VariableAlias });
+    await checkVariableBindings(node.boundVariables as { [field: string]: VariableAlias });
   }
 
   // Check explicit variable bindings for different node types
@@ -423,38 +423,38 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
 
   // Check fills for variable bindings (only if no fill style)
   if ('fills' in node && Array.isArray(node.fills)) {
-    node.fills.forEach((fill) => {
+    for (const fill of node.fills) {
       if ('boundVariables' in fill && fill.boundVariables) {
-        checkVariableBindings(fill.boundVariables as { [field: string]: VariableAlias }, 'fill');
+        await checkVariableBindings(fill.boundVariables as { [field: string]: VariableAlias }, 'fill');
       }
-    });
+    }
   }
 
   // Check strokes for variable bindings (only if no stroke style)
   if ('strokes' in node && Array.isArray(node.strokes)) {
-    node.strokes.forEach((stroke) => {
+    for (const stroke of node.strokes) {
       if ('boundVariables' in stroke && stroke.boundVariables) {
-        checkVariableBindings(stroke.boundVariables as { [field: string]: VariableAlias }, 'stroke');
+        await checkVariableBindings(stroke.boundVariables as { [field: string]: VariableAlias }, 'stroke');
       }
-    });
+    }
   }
 
   // Check effects for variable bindings (only if no effect style)
   if ('effects' in node && Array.isArray(node.effects)) {
-    node.effects.forEach((effect) => {
+    for (const effect of node.effects) {
       if ('boundVariables' in effect && effect.boundVariables) {
-        checkVariableBindings(effect.boundVariables as { [field: string]: VariableAlias }, 'effect');
+        await checkVariableBindings(effect.boundVariables as { [field: string]: VariableAlias }, 'effect');
       }
-    });
+    }
   }
 
   // Check layout grids for variable bindings (only if no grid style)
   if ('layoutGrids' in node && Array.isArray(node.layoutGrids)) {
-    node.layoutGrids.forEach((grid) => {
+    for (const grid of node.layoutGrids) {
       if ('boundVariables' in grid && grid.boundVariables) {
-        checkVariableBindings(grid.boundVariables as { [field: string]: VariableAlias }, 'grid');
+        await checkVariableBindings(grid.boundVariables as { [field: string]: VariableAlias }, 'grid');
       }
-    });
+    }
   }
 
   return results;
@@ -467,7 +467,7 @@ export function checkNodeForExternalUsages(node: SceneNode, page: string, parent
  * @param page - The page name (optional, will be determined from node hierarchy)
  * @param parents - Array of parent node names (optional, will be built during traversal)
  */
-export function traverseNode(node: BaseNode, results: ExternalUsage[], page?: string, parents: string[] = []) {
+export async function traverseNode(node: BaseNode, results: ExternalUsage[], page?: string, parents: string[] = []): Promise<void> {
   // Determine page name
   let currentPage = page;
   if (node.type === 'PAGE') {
@@ -486,7 +486,7 @@ export function traverseNode(node: BaseNode, results: ExternalUsage[], page?: st
   
   // Check if node is a SceneNode (has visual properties)
   if ('type' in node && node.type !== 'DOCUMENT' && node.type !== 'PAGE') {
-    const nodeResults = checkNodeForExternalUsages(node as SceneNode, currentPage || 'Unknown', parents);
+    const nodeResults = await checkNodeForExternalUsages(node as SceneNode, currentPage || 'Unknown', parents);
     results.push(...nodeResults);
   }
 
@@ -498,7 +498,7 @@ export function traverseNode(node: BaseNode, results: ExternalUsage[], page?: st
       : parents;
     
     for (const child of node.children) {
-      traverseNode(child, results, currentPage, newParents);
+      await traverseNode(child, results, currentPage, newParents);
     }
   }
 }

@@ -9,7 +9,7 @@ figma.clientStorage.getAsync('size').then(size => {
 }).catch(err => {});
 
 // Helper function to reattach styles on a single node
-function reattachStylesOnNode(node: SceneNode): number {
+async function reattachStylesOnNode(node: SceneNode): Promise<number> {
   let reattachedCount = 0;
 
   // Process Fill style
@@ -17,7 +17,7 @@ function reattachStylesOnNode(node: SceneNode): number {
     const fillStyleId = node.fillStyleId;
     
     // Detach style
-    (node as any).fillStyleId = '';
+    await (node as any).setFillStyleIdAsync('');
     
     // Unbind all variables from fills
     if ('fills' in node && Array.isArray(node.fills)) {
@@ -30,7 +30,7 @@ function reattachStylesOnNode(node: SceneNode): number {
     }
     
     // Reattach style
-    (node as any).fillStyleId = fillStyleId;
+    await (node as any).setFillStyleIdAsync(fillStyleId);
     reattachedCount++;
   }
 
@@ -39,7 +39,7 @@ function reattachStylesOnNode(node: SceneNode): number {
     const strokeStyleId = node.strokeStyleId;
     
     // Detach style
-    (node as any).strokeStyleId = '';
+    await (node as any).setStrokeStyleIdAsync('');
     
     // Unbind all variables from strokes
     if ('strokes' in node && Array.isArray(node.strokes)) {
@@ -52,7 +52,7 @@ function reattachStylesOnNode(node: SceneNode): number {
     }
     
     // Reattach style
-    (node as any).strokeStyleId = strokeStyleId;
+    await (node as any).setStrokeStyleIdAsync(strokeStyleId);
     reattachedCount++;
   }
 
@@ -61,7 +61,7 @@ function reattachStylesOnNode(node: SceneNode): number {
     const effectStyleId = node.effectStyleId;
     
     // Detach style
-    (node as any).effectStyleId = '';
+    await (node as any).setEffectStyleIdAsync('');
     
     // Unbind all variables from effects
     if ('effects' in node && Array.isArray(node.effects)) {
@@ -74,7 +74,7 @@ function reattachStylesOnNode(node: SceneNode): number {
     }
     
     // Reattach style
-    (node as any).effectStyleId = effectStyleId;
+    await (node as any).setEffectStyleIdAsync(effectStyleId);
     reattachedCount++;
   }
 
@@ -83,7 +83,7 @@ function reattachStylesOnNode(node: SceneNode): number {
     const gridStyleId = node.gridStyleId;
     
     // Detach style
-    (node as any).gridStyleId = '';
+    await (node as any).setGridStyleIdAsync('');
     
     // Unbind all variables from grids
     if ('layoutGrids' in node && Array.isArray(node.layoutGrids)) {
@@ -96,7 +96,7 @@ function reattachStylesOnNode(node: SceneNode): number {
     }
     
     // Reattach style
-    (node as any).gridStyleId = gridStyleId;
+    await (node as any).setGridStyleIdAsync(gridStyleId);
     reattachedCount++;
   }
 
@@ -104,18 +104,18 @@ function reattachStylesOnNode(node: SceneNode): number {
 }
 
 // Helper function to traverse and reattach styles on all nodes
-function traverseAndReattach(node: BaseNode): number {
+async function traverseAndReattach(node: BaseNode): Promise<number> {
   let count = 0;
 
   // Process current node if it's a SceneNode
   if ('type' in node && node.type !== 'PAGE' && node.type !== 'DOCUMENT') {
-    count += reattachStylesOnNode(node as SceneNode);
+    count += await reattachStylesOnNode(node as SceneNode);
   }
 
   // Recursively process children
   if ('children' in node) {
     for (const child of (node as any).children) {
-      count += traverseAndReattach(child);
+      count += await traverseAndReattach(child);
     }
   }
 
@@ -132,7 +132,7 @@ figma.ui.onmessage = async (msg) => {
       const results: ExternalUsage[] = [];
 
       // Traverse all nodes on the current page
-      traverseNode(currentPage, results);
+      await traverseNode(currentPage, results);
 
       // Send results back to UI
       figma.ui.postMessage({
@@ -170,7 +170,7 @@ figma.ui.onmessage = async (msg) => {
 
       // Traverse all selected nodes
       for (const node of selection) {
-        traverseNode(node, results);
+        await traverseNode(node, results);
       }
 
       // Send results back to UI
@@ -199,7 +199,7 @@ figma.ui.onmessage = async (msg) => {
 
       // Traverse all pages in the document
       for (const page of figma.root.children) {
-        traverseNode(page, results);
+        await traverseNode(page, results);
       }
 
       // Send results back to UI
@@ -228,7 +228,7 @@ figma.ui.onmessage = async (msg) => {
       let replacedCount = 0;
 
       for (const item of items) {
-        const node = figma.getNodeById(item.nodeId);
+        const node = await figma.getNodeByIdAsync(item.nodeId);
         if (!node) continue;
 
 
@@ -237,10 +237,10 @@ figma.ui.onmessage = async (msg) => {
 
         if (item.type.includes('variable')) {
           // Find local variable
-          const collections = figma.variables.getLocalVariableCollections();
+          const collections = await figma.variables.getLocalVariableCollectionsAsync();
           for (const collection of collections) {
             for (const variableId of collection.variableIds) {
-              const variable = figma.variables.getVariableById(variableId);
+              const variable = await figma.variables.getVariableByIdAsync(variableId);
               if (variable && variable.name === item.localMatch) {
                 localToken = variable;
                 break;
@@ -277,9 +277,9 @@ figma.ui.onmessage = async (msg) => {
               
               for (const alias of bindings) {
                 if (alias && alias.id) {
-                  const externalVar = figma.variables.getVariableById(alias.id);
+                  const externalVar = await figma.variables.getVariableByIdAsync(alias.id);
                   if (externalVar && externalVar.name === item.name) {
-                    const collection = figma.variables.getVariableCollectionById(externalVar.variableCollectionId);
+                    const collection = await figma.variables.getVariableCollectionByIdAsync(externalVar.variableCollectionId);
                     if (collection && collection.remote) {
                       // Replace with local variable
                       try {
@@ -301,7 +301,8 @@ figma.ui.onmessage = async (msg) => {
             
             // Check fills
             if ('fills' in node && Array.isArray(node.fills)) {
-              node.fills.forEach((fill, fillIndex) => {
+              for (let fillIndex = 0; fillIndex < node.fills.length; fillIndex++) {
+                const fill = node.fills[fillIndex];
                 if ('boundVariables' in fill && fill.boundVariables) {
                   for (const field in fill.boundVariables) {
                     const binding = (fill.boundVariables as any)[field];
@@ -309,9 +310,9 @@ figma.ui.onmessage = async (msg) => {
                     
                     for (const alias of bindings) {
                       if (alias && alias.id) {
-                        const externalVar = figma.variables.getVariableById(alias.id);
+                        const externalVar = await figma.variables.getVariableByIdAsync(alias.id);
                         if (externalVar && externalVar.name === item.name) {
-                          const collection = figma.variables.getVariableCollectionById(externalVar.variableCollectionId);
+                          const collection = await figma.variables.getVariableCollectionByIdAsync(externalVar.variableCollectionId);
                           if (collection && collection.remote) {
                             try {
                               // Use setFillsBoundVariable for fill properties
@@ -328,12 +329,13 @@ figma.ui.onmessage = async (msg) => {
                     }
                   }
                 }
-              });
+              }
             }
 
             // Check strokes
             if ('strokes' in node && Array.isArray(node.strokes)) {
-              node.strokes.forEach((stroke, strokeIndex) => {
+              for (let strokeIndex = 0; strokeIndex < node.strokes.length; strokeIndex++) {
+                const stroke = node.strokes[strokeIndex];
                 if ('boundVariables' in stroke && stroke.boundVariables) {
                   for (const field in stroke.boundVariables) {
                     const binding = (stroke.boundVariables as any)[field];
@@ -341,9 +343,9 @@ figma.ui.onmessage = async (msg) => {
                     
                     for (const alias of bindings) {
                       if (alias && alias.id) {
-                        const externalVar = figma.variables.getVariableById(alias.id);
+                        const externalVar = await figma.variables.getVariableByIdAsync(alias.id);
                         if (externalVar && externalVar.name === item.name) {
-                          const collection = figma.variables.getVariableCollectionById(externalVar.variableCollectionId);
+                          const collection = await figma.variables.getVariableCollectionByIdAsync(externalVar.variableCollectionId);
                           if (collection && collection.remote) {
                             try {
                               // Use setStrokesBoundVariable for stroke properties
@@ -360,7 +362,7 @@ figma.ui.onmessage = async (msg) => {
                     }
                   }
                 }
-              });
+              }
             }
 
             // Check effects - need to clone and modify the effects array
@@ -369,7 +371,8 @@ figma.ui.onmessage = async (msg) => {
               const newEffects = JSON.parse(JSON.stringify(node.effects));
               let effectsModified = false;
               
-              newEffects.forEach((effect: any, effectIndex: number) => {
+              for (let effectIndex = 0; effectIndex < newEffects.length; effectIndex++) {
+                const effect = newEffects[effectIndex];
                 const originalEffect = node.effects[effectIndex];
                 
                 if ('boundVariables' in originalEffect && originalEffect.boundVariables) {
@@ -379,9 +382,9 @@ figma.ui.onmessage = async (msg) => {
                     
                     for (const alias of bindings) {
                       if (alias && alias.id) {
-                        const externalVar = figma.variables.getVariableById(alias.id);
+                        const externalVar = await figma.variables.getVariableByIdAsync(alias.id);
                         if (externalVar && externalVar.name === item.name) {
-                          const collection = figma.variables.getVariableCollectionById(externalVar.variableCollectionId);
+                          const collection = await figma.variables.getVariableCollectionByIdAsync(externalVar.variableCollectionId);
                           if (collection && collection.remote) {
                             try {
                               // Initialize boundVariables if it doesn't exist
@@ -405,7 +408,7 @@ figma.ui.onmessage = async (msg) => {
                     }
                   }
                 }
-              });
+              }
               
               // Apply the modified effects back to the node
               if (effectsModified) {
@@ -423,13 +426,13 @@ figma.ui.onmessage = async (msg) => {
           let localStyles: BaseStyle[] = [];
           
           if (item.type === 'text style') {
-            localStyles = figma.getLocalTextStyles();
+            localStyles = await figma.getLocalTextStylesAsync();
           } else if (item.type === 'paint style') {
-            localStyles = figma.getLocalPaintStyles();
+            localStyles = await figma.getLocalPaintStylesAsync();
           } else if (item.type === 'effect style') {
-            localStyles = figma.getLocalEffectStyles();
+            localStyles = await figma.getLocalEffectStylesAsync();
           } else if (item.type === 'grid style') {
-            localStyles = figma.getLocalGridStyles();
+            localStyles = await figma.getLocalGridStylesAsync();
           }
           
           for (const style of localStyles) {
@@ -443,24 +446,24 @@ figma.ui.onmessage = async (msg) => {
           if (localToken) {
             try {
               if (item.type === 'text style' && 'textStyleId' in node) {
-                (node as any).textStyleId = localToken.id;
+                await (node as any).setTextStyleIdAsync(localToken.id);
                 replacedCount++;
               } else if (item.type === 'paint style') {
                 // Check and replace fillStyleId
                 if ('fillStyleId' in node && node.fillStyleId) {
-                  (node as any).fillStyleId = localToken.id;
+                  await (node as any).setFillStyleIdAsync(localToken.id);
                   replacedCount++;
                 }
                 // Check and replace strokeStyleId (independent of fillStyleId)
                 if ('strokeStyleId' in node && node.strokeStyleId) {
-                  (node as any).strokeStyleId = localToken.id;
+                  await (node as any).setStrokeStyleIdAsync(localToken.id);
                   replacedCount++;
                 }
               } else if (item.type === 'effect style' && 'effectStyleId' in node) {
-                (node as any).effectStyleId = localToken.id;
+                await (node as any).setEffectStyleIdAsync(localToken.id);
                 replacedCount++;
               } else if (item.type === 'grid style' && 'gridStyleId' in node) {
-                (node as any).gridStyleId = localToken.id;
+                await (node as any).setGridStyleIdAsync(localToken.id);
                 replacedCount++;
               }
             } catch (error) {
@@ -500,7 +503,7 @@ figma.ui.onmessage = async (msg) => {
 
       // Traverse all selected nodes and their children
       for (const node of selection) {
-        reattachedCount += traverseAndReattach(node);
+        reattachedCount += await traverseAndReattach(node);
       }
 
       figma.ui.postMessage({
@@ -533,7 +536,7 @@ figma.ui.onmessage = async (msg) => {
 
       // Reattach styles only on selected layers (without traversing children)
       for (const node of selection) {
-        reattachedCount += reattachStylesOnNode(node);
+        reattachedCount += await reattachStylesOnNode(node);
       }
 
       figma.ui.postMessage({
@@ -557,10 +560,10 @@ figma.ui.onmessage = async (msg) => {
 
       // Traverse all matched nodes and their children (unified logic)
       for (const nodeId of nodeIds) {
-        const node = figma.getNodeById(nodeId);
+        const node = await figma.getNodeByIdAsync(nodeId);
         if (!node) continue;
 
-        reattachedCount += traverseAndReattach(node);
+        reattachedCount += await traverseAndReattach(node);
       }
 
       figma.ui.postMessage({
@@ -579,7 +582,7 @@ figma.ui.onmessage = async (msg) => {
     }
   } else if (msg.type === 'scrollToNode') {
     try {
-      const node = figma.getNodeById(msg.nodeId);
+      const node = await figma.getNodeByIdAsync(msg.nodeId);
       if (node) {
         // Find the page that contains this node
         let nodePage: PageNode | null = null;
